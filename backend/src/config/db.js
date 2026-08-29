@@ -132,7 +132,7 @@ const connectDatabase = async () => {
     });
     FamilyMember.belongsTo(User, { foreignKey: "familyMemberId", as: "familyMember" });
 
-    await sequelize.sync({ alter: true });
+    await sequelize.sync();
     console.log("Database tables synchronized successfully.");
   } catch (error) {
     console.error("Unable to connect to MySQL:");

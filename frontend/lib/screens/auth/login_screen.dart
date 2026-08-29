@@ -5,6 +5,7 @@ import '../../providers/medicine_provider.dart';
 import '../../providers/reminder_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_logo.dart';
 import '../../utils/page_transitions.dart';
 import '../../utils/validators.dart';
 import '../../widgets/custom_text_field.dart';
@@ -129,15 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     opacity: value,
                     child: Transform.translate(offset: Offset(0, (1 - value) * 12), child: child),
                   ),
-                  child: Container(
-                    height: 64,
-                    width: 64,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(Icons.medication_rounded, color: Colors.white, size: 32),
-                  ),
+                  child: const AppLogo(size: 72),
                 ),
                 const SizedBox(height: 24),
                 Text(

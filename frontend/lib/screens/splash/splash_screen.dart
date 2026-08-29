@@ -5,6 +5,7 @@ import '../../providers/medicine_provider.dart';
 import '../../providers/reminder_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_logo.dart';
 import '../../utils/page_transitions.dart';
 import '../auth/login_screen.dart';
 import '../main_navigation.dart';
@@ -97,14 +98,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.medication_rounded, size: 64, color: Colors.white),
-                ),
+                const AppLogo(size: 96, showBackground: true, borderRadius: 28),
                 const SizedBox(height: 24),
                 const Text(
                   'MediTrack',

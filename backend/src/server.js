@@ -19,7 +19,7 @@ const startServer = async () => {
     await verifyMailConnection();
 
     // Start Express server
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`MediTrack server running on port ${PORT}`);
     });
   } catch (error) {
