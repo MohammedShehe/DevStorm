@@ -1,0 +1,49 @@
+name: medicine_reminder_app
+description: "A professional Medicine Reminder & Dosage Tracker app."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # State management
+  provider: ^6.1.2
+
+  # Networking
+  http: ^1.2.0
+
+  # UI / Fonts / Styling
+  google_fonts: ^6.2.1
+  percent_indicator: ^4.2.3
+  flutter_slidable: ^3.1.1
+  shimmer: ^3.0.0
+
+  # Charts & Calendar
+  fl_chart: ^0.68.0
+  table_calendar: ^3.1.2
+
+  # Animations & Transitions
+  animations: ^2.0.11
+
+  # Utilities
+  intl: ^0.19.0
+  shared_preferences: ^2.2.2
+
+  # Local notifications
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.4
+  flutter_timezone: ^3.0.1
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
