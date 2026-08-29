@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:printing/printing.dart';
 import '../../models/dose_log_model.dart';
 import '../../providers/reminder_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../services/api_service.dart';
 import '../../utils/datetime_utils.dart';
+import 'dart:typed_data';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -21,7 +23,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -46,16 +48,13 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 width: 40,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(color: AppColors.borderLight, borderRadius: BorderRadius.circular(10)),
-                alignment: Alignment.center,
               ),
               const Text('Export Patient Medicine History', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              const Text('Includes medicine start dates, patient age, adherence and dose history.',
+              const Text('Generate a real PDF containing patient details, medicine records and dose history.',
                   style: TextStyle(color: AppColors.textSecondaryLight, fontSize: 13)),
               const SizedBox(height: 20),
-              _exportTile(context, icon: Icons.picture_as_pdf_outlined, label: 'Export medicine history (PDF)', color: AppColors.danger),
-              const SizedBox(height: 12),
-              const SizedBox(height: 8),
+              _exportTile(context, icon: Icons.picture_as_pdf_outlined, label: 'Download / Save medicine history PDF', color: AppColors.danger),
             ],
           ),
         ),
@@ -70,47 +69,23 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         Navigator.pop(context);
         final api = ApiService();
         try {
-          final result = await api.exportPdf();
+          final List<int> bytes = await api.exportPdfFile();
+          final Uint8List pdfBytes = Uint8List.fromList(bytes);
+
           if (!context.mounted) return;
-          if (result['success'] != true) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(result['message']?.toString() ?? 'Export failed')),
-            );
-            return;
-          }
-          final data = result['data'] as Map<String, dynamic>? ?? {};
-          final summary = Map<String, dynamic>.from(data['summary'] as Map? ?? {});
-          final history = (data['medicineHistory'] as List? ?? []);
-          final buf = StringBuffer();
-          buf.writeln('PATIENT MEDICINE HISTORY');
-          buf.writeln('========================');
-          buf.writeln('Patient: ${summary['patientName'] ?? ''}');
-          buf.writeln('Email: ${summary['email'] ?? ''}');
-          buf.writeln('DOB: ${summary['dateOfBirth'] ?? ''}');
-          buf.writeln('Age: ${summary['age'] ?? ''}');
-          buf.writeln('Gender: ${summary['gender'] ?? ''}');
-          buf.writeln('Generated: ${summary['generatedAt'] ?? ''}');
-          buf.writeln('');
-          buf.writeln('Totals — taken: ${summary['taken']}, missed: ${summary['missed']}, skipped: ${summary['skipped']}');
-          buf.writeln('');
-          buf.writeln('MEDICINES');
-          for (final m in history) {
-            final med = Map<String, dynamic>.from(m as Map);
-            buf.writeln('- ${med['name']} | ${med['dosage']} | start: ${med['startDate']} | adherence: ${med['adherence']}% | taken: ${med['taken']} missed: ${med['missed']}');
-          }
-          await showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Medicine History PDF'),
-              content: SingleChildScrollView(child: SelectableText(buf.toString())),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-              ],
-            ),
+
+          final filename =
+              'meditrack_medicine_history_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf';
+
+          await Printing.layoutPdf(
+            name: filename,
+            onLayout: (_) async => pdfBytes,
           );
         } catch (e) {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('PDF download failed: $e')),
+            );
           }
         }
       },
@@ -128,8 +103,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               child: Icon(icon, color: color),
             ),
             const SizedBox(width: 14),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
-            const Spacer(),
+            Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700))),
             const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondaryLight),
           ],
         ),
@@ -198,7 +172,6 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                     tabs: const [
                       Tab(text: 'Charts'),
                       Tab(text: 'Logs'),
-                      Tab(text: 'Caregiver Notes'),
                     ],
                   ),
                 ),
@@ -210,7 +183,6 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 children: const [
                   _ChartsTab(),
                   _LogsTab(),
-                  _CaregiverNotesTab(),
                 ],
               ),
             ),
@@ -506,190 +478,3 @@ class _LogsTab extends StatelessWidget {
   }
 }
 
-class _CaregiverNotesTab extends StatefulWidget {
-  const _CaregiverNotesTab();
-
-  @override
-  State<_CaregiverNotesTab> createState() => _CaregiverNotesTabState();
-}
-
-class _CaregiverNotesTabState extends State<_CaregiverNotesTab> {
-  final _api = ApiService();
-  List<Map<String, dynamic>> _notes = [];
-  bool _loading = true;
-  String? _error;
-  final _noteController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void dispose() {
-    _noteController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final result = await _api.getCaregiverNotes();
-      if (result['success'] == true) {
-        final list = (result['data']['notes'] as List?) ?? [];
-        _notes = list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      }
-    } catch (e) {
-      _error = e.toString();
-    }
-    if (mounted) setState(() => _loading = false);
-  }
-
-  String _relativeTime(dynamic raw) {
-    if (raw == null) return '';
-    try {
-      final dt = parseServerDateTime(raw);
-      final diff = DateTime.now().difference(dt);
-      if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-      if (diff.inHours < 24) return '${diff.inHours} hours ago';
-      if (diff.inDays < 7) return '${diff.inDays} days ago';
-      return '${(diff.inDays / 7).floor()} weeks ago';
-    } catch (_) {
-      return '';
-    }
-  }
-
-  Future<void> _addNote() async {
-    final text = _noteController.text.trim();
-    if (text.isEmpty) return;
-    try {
-      await _api.addCaregiverNote(text);
-      _noteController.clear();
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Note added')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return Column(
-      children: [
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-            child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
-          ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _noteController,
-                  decoration: InputDecoration(
-                    hintText: 'Add a caregiver note…',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              IconButton.filled(
-                onPressed: _addNote,
-                style: IconButton.styleFrom(backgroundColor: AppColors.primary),
-                icon: const Icon(Icons.send_rounded, color: Colors.white),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: _notes.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 80),
-                      Center(
-                        child: Text(
-                          'No caregiver notes yet.\nAdd one above or invite a caregiver first.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textSecondaryLight),
-                        ),
-                      ),
-                    ],
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
-                    itemCount: _notes.length,
-                    itemBuilder: (context, index) {
-                      final note = _notes[index];
-                      final name = (note['caregiverName'] ?? 'Caregiver').toString();
-                      final body = (note['note'] ?? '').toString();
-                      final time = _relativeTime(note['createdAt']);
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 14),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).cardTheme.color,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: AppColors.borderLight),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 16,
-                                  backgroundColor: AppColors.secondary.withOpacity(0.15),
-                                  child: Text(
-                                    name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                    style: const TextStyle(
-                                      color: AppColors.secondary,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    name,
-                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
-                                  ),
-                                ),
-                                Text(
-                                  time,
-                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Text(body, style: const TextStyle(fontSize: 13.5, height: 1.4)),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ),
-      ],
-    );
-  }
-}

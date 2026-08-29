@@ -72,7 +72,9 @@ class _OtpScreenState extends State<OtpScreen> {
     if (success) {
       setState(() => _verified = true);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid OTP, please try again')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(auth.error ?? 'Invalid or expired OTP. Please request a new OTP.')),
+      );
     }
   }
 

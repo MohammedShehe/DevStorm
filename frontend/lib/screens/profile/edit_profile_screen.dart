@@ -66,26 +66,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 44,
-                        backgroundColor: AppColors.primary.withOpacity(0.15),
-                        child: Text(
-                          user?.initials ?? '?',
-                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 28),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                          child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
-                        ),
-                      ),
-                    ],
+                  child: CircleAvatar(
+                    radius: 44,
+                    backgroundColor: AppColors.primary.withOpacity(0.15),
+                    child: Text(
+                      user?.initials ?? '?',
+                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 28),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 28),

@@ -24,7 +24,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final auth = context.read<AuthProvider>();
     final sent = await auth.requestPasswordReset(_emailController.text.trim());
     if (sent && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('OTP sent successfully. Check your email.')),
+      );
       pushSlideRight(context, OtpScreen(email: _emailController.text.trim()));
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(auth.error ?? 'Could not send OTP. Please try again.')),
+      );
     }
   }
 

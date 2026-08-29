@@ -90,11 +90,12 @@ class ProfileScreen extends StatelessWidget {
                   label: 'Edit Profile',
                   onTap: () => pushFadeSlide(context, const EditProfileScreen()),
                 ),
-                _MenuItemData(
-                  icon: Icons.link_rounded,
-                  label: 'Caregiver Linking',
-                  onTap: () => pushFadeSlide(context, const CaregiverScreen()),
-                ),
+                if (user?.isCaregiver != true)
+                  _MenuItemData(
+                    icon: Icons.link_rounded,
+                    label: 'Caregiver Linking',
+                    onTap: () => pushFadeSlide(context, const CaregiverScreen()),
+                  ),
               ]),
             ),
             SliverToBoxAdapter(

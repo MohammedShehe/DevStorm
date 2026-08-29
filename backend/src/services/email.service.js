@@ -70,8 +70,7 @@ MediTrack Team
 const sendOtpEmail = async (user, otp) => {
 
   if (!canSendMail()) {
-    console.warn('Email skipped: MAIL_USER/MAIL_PASSWORD not configured');
-    return;
+    throw new Error('Email service is not configured. Set MAIL_USER and MAIL_PASSWORD in backend/.env.');
   }
   const mailOptions = {
     from: process.env.MAIL_FROM,

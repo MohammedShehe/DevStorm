@@ -3,6 +3,7 @@ import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/page_transitions.dart';
 import 'patient_detail_screen.dart';
+import '../chat/chat_list_screen.dart';
 
 class CaregiverDashboardScreen extends StatefulWidget {
   const CaregiverDashboardScreen({super.key});
@@ -58,7 +59,16 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen> {
       appBar: AppBar(
         title: const Text('My Patients'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+          IconButton(
+            tooltip: 'Messages',
+            icon: const Icon(Icons.chat_bubble_outline_rounded),
+            onPressed: () => pushFadeSlide(context, const ChatListScreen()),
+          ),
+          IconButton(
+            tooltip: 'Refresh patients',
+            icon: const Icon(Icons.refresh),
+            onPressed: _load,
+          ),
         ],
       ),
       body: _loading

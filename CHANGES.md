@@ -10,3 +10,11 @@
 8. Chat between patient and linked caregiver via additional FAB menu → Messages.
 9. Backend: users.role (patient|caregiver), chat_messages table, /api/chat, /api/users/patients APIs.
 10. Run backend/migrate_role_chat.sql on existing databases.
+## Latest update — Reports, PDF, caregiver patient view and password reset
+
+- Removed the Caregiver Notes section from Reports & History.
+- PDF export now returns a real `application/pdf` file from the backend and the Flutter app opens the system/browser save/print flow so the report can actually be saved.
+- Caregiver patient medicine records and dose history are ordered newest/recent first; medicine start/end dates are displayed.
+- Added safer spacing around caregiver patient charts.
+- Forgot Password now surfaces OTP-send errors, confirms successful OTP delivery, reports verification errors from the server, and continues through OTP verification to the new-password form.
+- OTP email delivery no longer silently succeeds when the email service is not configured.

@@ -21,7 +21,6 @@ class ApiService {
   static const String _notificationBase = '$baseUrl/notifications';
   static const String _reportBase = '$baseUrl/reports';
   static const String _preferenceBase = '$baseUrl/preferences';
-  static const String _caregiverNoteBase = '$baseUrl/caregivers';
   static const String _familyBase = '$baseUrl/family-members';
   static const String _aiBase = '$baseUrl/ai';
 
@@ -509,6 +508,32 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  Future<List<int>> exportPdfFile() async {
+    final response = await http.get(
+      Uri.parse('$_reportBase/export/pdf'),
+      headers: {
+        'Accept': 'application/pdf',
+        if (_authToken != null && _authToken!.isNotEmpty) 'Authorization': 'Bearer $_authToken',
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String message = 'Unable to generate PDF (${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        message = body['message']?.toString() ?? message;
+      } catch (_) {}
+      throw ApiException(message: message, statusCode: response.statusCode);
+    }
+    if (response.bodyBytes.isEmpty) {
+      throw ApiException(message: 'The server returned an empty PDF.', statusCode: response.statusCode);
+    }
+    final contentType = response.headers['content-type']?.toLowerCase() ?? '';
+    if (!contentType.contains('application/pdf')) {
+      throw ApiException(message: 'The server did not return a valid PDF.', statusCode: response.statusCode);
+    }
+    return response.bodyBytes;
+  }
+
   Future<Map<String, dynamic>> exportPdf() async {
     final response = await http.get(
       Uri.parse('$_reportBase/export/pdf'),
@@ -520,32 +545,6 @@ class ApiService {
   Future<Map<String, dynamic>> exportCsv() async {
     final response = await http.get(
       Uri.parse('$_reportBase/export/csv'),
-      headers: _headers,
-    );
-    return _handleResponse(response);
-  }
-
-  // ---------- CAREGIVER NOTES ----------
-  Future<Map<String, dynamic>> getCaregiverNotes() async {
-    final response = await http.get(
-      Uri.parse('$_caregiverNoteBase/notes'),
-      headers: _headers,
-    );
-    return _handleResponse(response);
-  }
-
-  Future<Map<String, dynamic>> addCaregiverNote(String note) async {
-    final response = await http.post(
-      Uri.parse('$_caregiverNoteBase/notes'),
-      headers: _headers,
-      body: jsonEncode({'note': note}),
-    );
-    return _handleResponse(response);
-  }
-
-  Future<Map<String, dynamic>> deleteCaregiverNote(String id) async {
-    final response = await http.delete(
-      Uri.parse('$_caregiverNoteBase/notes/$id'),
       headers: _headers,
     );
     return _handleResponse(response);

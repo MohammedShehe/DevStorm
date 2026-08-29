@@ -139,6 +139,10 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final isCaregiver = context.watch<AuthProvider>().currentUser?.isCaregiver == true;
+    if (isCaregiver) {
+      return _buildCaregiverNavigation(context);
+    }
     return Scaffold(
       extendBody: true,
       drawer: _currentIndex == 3 ? const AppDrawer() : null,
@@ -365,6 +369,28 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
             }),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCaregiverNavigation(BuildContext context) {
+    final isProfile = _currentIndex == 1;
+    return Scaffold(
+      drawer: isProfile ? const AppDrawer() : null,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: KeyedSubtree(
+          key: ValueKey<int>(_currentIndex),
+          child: isProfile ? const ProfileScreen() : const CaregiverDashboardScreen(),
+        ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) => setState(() => _currentIndex = index),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.person_outline_rounded), selectedIcon: Icon(Icons.person_rounded), label: 'Profile'),
+        ],
       ),
     );
   }
