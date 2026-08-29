@@ -6,6 +6,8 @@ class AppUser {
   final DateTime? dateOfBirth;
   final String gender;
   final String? avatarUrl;
+  /// 'patient' or 'caregiver'
+  final String role;
   final bool isCaregiverAccount;
   final List<CaregiverLink> linkedCaregivers;
 
@@ -17,9 +19,13 @@ class AppUser {
     this.dateOfBirth,
     this.gender = 'Not specified',
     this.avatarUrl,
+    this.role = 'patient',
     this.isCaregiverAccount = false,
     this.linkedCaregivers = const [],
   });
+
+  bool get isPatient => role == 'patient';
+  bool get isCaregiver => role == 'caregiver' || isCaregiverAccount;
 
   String get initials {
     final parts = fullName.trim().split(RegExp(r'\s+'));
@@ -35,6 +41,8 @@ class AppUser {
     DateTime? dateOfBirth,
     String? gender,
     String? avatarUrl,
+    String? role,
+    bool? isCaregiverAccount,
   }) {
     return AppUser(
       id: id,
@@ -44,7 +52,8 @@ class AppUser {
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       gender: gender ?? this.gender,
       avatarUrl: avatarUrl ?? this.avatarUrl,
-      isCaregiverAccount: isCaregiverAccount,
+      role: role ?? this.role,
+      isCaregiverAccount: isCaregiverAccount ?? this.isCaregiverAccount,
       linkedCaregivers: linkedCaregivers,
     );
   }

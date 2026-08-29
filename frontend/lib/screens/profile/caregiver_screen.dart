@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
-import '../../utils/validators.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/primary_button.dart';
+import '../../utils/validators.dart';
 
 class CaregiverScreen extends StatefulWidget {
   const CaregiverScreen({super.key});
@@ -13,15 +13,23 @@ class CaregiverScreen extends StatefulWidget {
 }
 
 class _CaregiverScreenState extends State<CaregiverScreen> {
-  final ApiService _api = ApiService();
-  List<Map<String, String>> _caregivers = [];
+  final _api = ApiService();
+  final _emailCtrl = TextEditingController();
   bool _loading = true;
+  bool _saving = false;
   String? _error;
+  List<Map<String, dynamic>> _caregivers = [];
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -32,98 +40,56 @@ class _CaregiverScreenState extends State<CaregiverScreen> {
     try {
       final result = await _api.getCaregivers();
       if (result['success'] == true) {
-        final list = (result['data']['caregivers'] as List?) ?? [];
-        _caregivers = list.map((c) {
-          final m = c as Map<String, dynamic>;
-          return {
-            'id': m['id']?.toString() ?? '',
-            'name': m['caregiverName']?.toString() ?? m['name']?.toString() ?? '',
-            'relation': 'Caregiver',
-            'status': m['status']?.toString() ?? 'Pending',
-            'email': m['email']?.toString() ?? '',
-          };
-        }).toList();
+        final list = (result['data']['caregivers'] as List? ?? [])
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        setState(() {
+          _caregivers = list;
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _error = result['message']?.toString();
+          _loading = false;
+        });
       }
     } catch (e) {
-      _error = e.toString();
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
-    if (mounted) setState(() => _loading = false);
   }
 
-  void _showInviteSheet() {
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    bool sending = false;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Invite a Caregiver', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 20),
-                  CustomTextField(
-                    label: 'Caregiver Name',
-                    controller: nameController,
-                    prefixIcon: Icons.person_outline_rounded,
-                    validator: Validators.fullName,
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    label: 'Email Address',
-                    controller: emailController,
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: Validators.email,
-                  ),
-                  const SizedBox(height: 22),
-                  PrimaryButton(
-                    label: sending ? 'Sending…' : 'Send Invitation',
-                    onPressed: sending
-                        ? null
-                        : () async {
-                            if (!formKey.currentState!.validate()) return;
-                            setSheet(() => sending = true);
-                            try {
-                              await _api.inviteCaregiver(
-                                caregiverName: nameController.text.trim(),
-                                email: emailController.text.trim(),
-                              );
-                              if (ctx.mounted) Navigator.pop(ctx);
-                              await _load();
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Invitation sent successfully')),
-                                );
-                              }
-                            } catch (e) {
-                              setSheet(() => sending = false);
-                              if (ctx.mounted) {
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                  SnackBar(content: Text(e.toString())),
-                                );
-                              }
-                            }
-                          },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+  Future<void> _link() async {
+    final email = _emailCtrl.text.trim();
+    final err = Validators.email(email);
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final result = await _api.inviteCaregiver(email: email);
+      if (result['success'] == true) {
+        _emailCtrl.clear();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Caregiver linked successfully')),
+          );
+        }
+        await _load();
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message']?.toString() ?? 'Failed to link')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+    if (mounted) setState(() => _saving = false);
   }
 
   @override
@@ -137,51 +103,58 @@ class _CaregiverScreenState extends State<CaregiverScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
-                  if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(_error!, style: const TextStyle(color: AppColors.danger)),
-                    ),
-                  if (_caregivers.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: Text(
-                          'No caregivers yet.\nInvite someone who helps manage your medicines.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textSecondaryLight),
-                        ),
-                      ),
-                    ),
-                  ..._caregivers.map((c) {
-                    final accepted = (c['status'] ?? '').toLowerCase() == 'accepted';
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.primary.withOpacity(0.15),
-                          child: Text(
-                            (c['name'] ?? '?').isNotEmpty ? c['name']![0].toUpperCase() : '?',
-                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        title: Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Text('${c['email'] ?? ''}\n${c['status'] ?? ''}'),
-                        isThreeLine: true,
-                        trailing: Icon(
-                          accepted ? Icons.check_circle : Icons.hourglass_top_rounded,
-                          color: accepted ? AppColors.success : AppColors.warning,
-                        ),
-                      ),
-                    );
-                  }),
+                  const Text(
+                    'Add a caregiver by their registered caregiver account email. They will see your medicine routine on their dashboard.',
+                    style: TextStyle(color: AppColors.textSecondaryLight, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    controller: _emailCtrl,
+                    label: 'Caregiver email',
+                    keyboardType: TextInputType.emailAddress,
+                    validator: Validators.email,
+                  ),
                   const SizedBox(height: 12),
                   PrimaryButton(
-                    label: 'Invite New Caregiver',
-                    icon: Icons.person_add_alt_1_rounded,
-                    onPressed: _showInviteSheet,
+                    label: _saving ? 'Linking…' : 'Link Caregiver',
+                    isLoading: _saving,
+                    onPressed: _saving ? null : _link,
                   ),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(_error!, style: const TextStyle(color: AppColors.danger)),
+                    ),
+                  const SizedBox(height: 24),
+                  const Text('Linked caregivers', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  if (_caregivers.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Text('No caregivers linked yet.', style: TextStyle(color: AppColors.textSecondaryLight)),
+                    )
+                  else
+                    ..._caregivers.map((c) {
+                      final accepted = (c['status'] ?? '').toString().toLowerCase() == 'accepted';
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: AppColors.primary.withOpacity(0.15),
+                            child: const Icon(Icons.person, color: AppColors.primary),
+                          ),
+                          title: Text(c['caregiverName']?.toString() ?? c['name']?.toString() ?? 'Caregiver',
+                              style: const TextStyle(fontWeight: FontWeight.w700)),
+                          subtitle: Text('${c['email'] ?? ''}\n${c['status'] ?? ''}'),
+                          isThreeLine: true,
+                          trailing: Icon(
+                            accepted ? Icons.check_circle : Icons.hourglass_top_rounded,
+                            color: accepted ? AppColors.success : AppColors.warning,
+                          ),
+                        ),
+                      );
+                    }),
                 ],
               ),
             ),

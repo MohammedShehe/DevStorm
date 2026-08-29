@@ -7,7 +7,6 @@ import '../../utils/page_transitions.dart';
 import 'edit_profile_screen.dart';
 import 'caregiver_screen.dart';
 import 'accessibility_screen.dart';
-import 'family_members_screen.dart';
 import '../legal/legal_screen.dart';
 import '../auth/login_screen.dart';
 
@@ -90,11 +89,6 @@ class ProfileScreen extends StatelessWidget {
                   icon: Icons.person_outline_rounded,
                   label: 'Edit Profile',
                   onTap: () => pushFadeSlide(context, const EditProfileScreen()),
-                ),
-                _MenuItemData(
-                  icon: Icons.family_restroom_rounded,
-                  label: 'Multi-user & Family Members',
-                  onTap: () => pushFadeSlide(context, const FamilyMembersScreen()),
                 ),
                 _MenuItemData(
                   icon: Icons.link_rounded,

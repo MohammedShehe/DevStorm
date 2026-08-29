@@ -11,7 +11,7 @@ class ApiService {
 
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://devstorm-bena.onrender.com/api', // Android emulator → host localhost
+    defaultValue: 'http://localhost:5000/api', // Android emulator → host localhost
   );
 
   static const String _authBase = '$baseUrl/auth';
@@ -86,6 +86,7 @@ class ApiService {
     required String gender,
     required String password,
     required String confirmPassword,
+    String role = 'patient',
   }) async {
     final response = await http.post(
       Uri.parse('$_authBase/register'),
@@ -98,6 +99,7 @@ class ApiService {
         'gender': gender.toUpperCase(),
         'password': password,
         'confirmPassword': confirmPassword,
+        'role': role,
       }),
     );
     return _handleResponse(response);
@@ -211,16 +213,60 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> inviteCaregiver({
-    required String caregiverName,
     required String email,
+    String? caregiverName,
   }) async {
     final response = await http.post(
       Uri.parse('$_userBase/caregivers/invite'),
       headers: _headers,
       body: jsonEncode({
-        'caregiverName': caregiverName,
+        if (caregiverName != null) 'caregiverName': caregiverName,
         'email': email,
       }),
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> getMyPatients() async {
+    final response = await http.get(
+      Uri.parse('$_userBase/patients'),
+      headers: _headers,
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> getPatientDetail(String patientId) async {
+    final response = await http.get(
+      Uri.parse('$_userBase/patients/$patientId'),
+      headers: _headers,
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> getChatConversations() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/chat/conversations'),
+      headers: _headers,
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> getChatMessages(String otherUserId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/chat/$otherUserId'),
+      headers: _headers,
+    );
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> sendChatMessage({
+    required String receiverId,
+    required String message,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/chat/'),
+      headers: _headers,
+      body: jsonEncode({'receiverId': receiverId, 'message': message}),
     );
     return _handleResponse(response);
   }

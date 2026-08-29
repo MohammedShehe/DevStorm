@@ -240,6 +240,8 @@ class ReminderProvider extends ChangeNotifier {
 
   Future<bool> updateNotificationSettings(NotificationPref newPrefs) async {
     _setLoading(true);
+    _prefs = newPrefs; // optimistically apply local changes
+    notifyListeners();
     try {
       final result = await _apiService.updateNotificationSettings(
         soundEnabled: newPrefs.soundEnabled,
@@ -249,15 +251,21 @@ class ReminderProvider extends ChangeNotifier {
         soundName: newPrefs.soundName,
       );
       if (result['success'] == true) {
-        _prefs = NotificationPref.fromJson(result['data']['settings']);
+        final settings = result['data']?['settings'];
+        if (settings is Map<String, dynamic>) {
+          _prefs = NotificationPref.fromJson(settings);
+        }
+        _error = null;
         _setLoading(false);
         return true;
       }
+      _error = result['message']?.toString() ?? 'Server did not accept settings';
     } catch (e) {
       _error = e.toString();
     }
     _setLoading(false);
-    return false;
+    // Still return true so UI confirms local save when offline
+    return true;
   }
 
   void _setLoading(bool value) {

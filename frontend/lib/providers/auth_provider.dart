@@ -66,6 +66,7 @@ class AuthProvider extends ChangeNotifier {
     required String confirmPassword,
     DateTime? dateOfBirth,
     String gender = 'Not specified',
+    String role = 'patient',
   }) async {
     _setLoading(true);
     _error = null;
@@ -78,6 +79,7 @@ class AuthProvider extends ChangeNotifier {
         gender: _mapGender(gender),
         password: password,
         confirmPassword: confirmPassword,
+        role: role,
       );
       if (result['success'] == true) {
         // Auto-login after register for smoother UX
@@ -288,6 +290,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   AppUser _userFromApi(Map<String, dynamic> userData) {
+    final role = (userData['role']?.toString() ?? 'patient').toLowerCase();
     return AppUser(
       id: userData['id'].toString(),
       fullName: userData['fullName']?.toString() ?? '',
@@ -297,6 +300,8 @@ class AuthProvider extends ChangeNotifier {
           ? DateTime.tryParse(userData['dateOfBirth'].toString())
           : null,
       gender: userData['gender']?.toString() ?? 'Not specified',
+      role: role,
+      isCaregiverAccount: role == 'caregiver',
     );
   }
 
@@ -310,6 +315,8 @@ class AuthProvider extends ChangeNotifier {
           ? DateTime.tryParse(map['dateOfBirth'].toString())
           : null,
       gender: map['gender']?.toString() ?? 'Not specified',
+      role: map['role']?.toString() ?? 'patient',
+      isCaregiverAccount: (map['role']?.toString() ?? 'patient') == 'caregiver',
     );
   }
 
@@ -320,5 +327,7 @@ class AuthProvider extends ChangeNotifier {
         'phone': u.phone,
         'dateOfBirth': u.dateOfBirth?.toIso8601String(),
         'gender': u.gender,
+        'role': u.role,
       };
 }
+

@@ -105,7 +105,8 @@ const updateProfile = async (req, res, next) => {
           email: updatedUser.email,
           phoneNumber: updatedUser.phoneNumber,
           dateOfBirth: updatedUser.dateOfBirth,
-          gender: updatedUser.gender
+          gender: updatedUser.gender,
+          role: updatedUser.role
         }
       }
     );
@@ -138,64 +139,133 @@ const getCaregivers = async (req, res, next) => {
 const inviteCaregiver = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { caregiverName, email } = req.body;
-
-    // Validate
-    if (!caregiverName || !caregiverName.trim()) {
-      return errorResponse(
-        res,
-        400,
-        "Caregiver name is required."
-      );
+    const me = await User.findByPk(userId);
+    if (!me) return errorResponse(res, 404, "User not found.");
+    if (me.role !== "patient") {
+      return errorResponse(res, 403, "Only patients can link a caregiver.");
     }
-
+    const { email } = req.body;
     if (!email || !email.trim()) {
-      return errorResponse(
-        res,
-        400,
-        "Caregiver email is required."
-      );
+      return errorResponse(res, 400, "Caregiver email is required.");
     }
-
-    // Check if already invited
-    const existingInvite = await Caregiver.findOne({
-      where: {
-        userId,
-        email: email.toLowerCase()
-      }
+    const normalizedEmail = email.trim().toLowerCase();
+    const caregiverUser = await User.findOne({
+      where: { email: normalizedEmail, role: "caregiver" },
     });
-
-    if (existingInvite) {
+    if (!caregiverUser) {
       return errorResponse(
         res,
-        409,
-        "This caregiver has already been invited."
+        404,
+        "No caregiver account found with this email. Please enter a valid caregiver email."
       );
     }
-
-    // Create invitation
+    if (caregiverUser.id === userId) {
+      return errorResponse(res, 400, "You cannot link yourself as caregiver.");
+    }
+    const existingInvite = await Caregiver.findOne({
+      where: { userId, email: normalizedEmail },
+    });
+    if (existingInvite) {
+      return errorResponse(res, 409, "This caregiver is already linked.");
+    }
     const caregiver = await Caregiver.create({
       userId,
-      caregiverName: caregiverName.trim(),
-      email: email.toLowerCase(),
-      status: "Pending"
+      caregiverName: caregiverUser.fullName,
+      email: normalizedEmail,
+      status: "Accepted",
     });
+    return successResponse(res, 201, "Caregiver linked successfully.", {
+      caregiver: {
+        id: caregiver.id,
+        caregiverName: caregiver.caregiverName,
+        email: caregiver.email,
+        status: caregiver.status,
+        caregiverUserId: caregiverUser.id,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-    // TODO: Send invitation email (optional)
-
-    return successResponse(
-      res,
-      201,
-      "Caregiver invited successfully.",
-      {
-        caregiver: {
-          id: caregiver.id,
-          caregiverName: caregiver.caregiverName,
-          email: caregiver.email,
-          status: caregiver.status
-        }
+const getMyPatients = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const me = await User.findByPk(userId);
+    if (!me) return errorResponse(res, 404, "User not found.");
+    if (me.role !== "caregiver") {
+      return errorResponse(res, 403, "Only caregivers can view patients.");
+    }
+    const links = await Caregiver.findAll({
+      where: { email: me.email },
+      order: [["createdAt", "DESC"]],
+    });
+    const patients = [];
+    for (const link of links) {
+      const patient = await User.findByPk(link.userId, {
+        attributes: { exclude: ["password"] },
+      });
+      if (patient) {
+        patients.push({
+          linkId: link.id,
+          status: link.status,
+          linkedAt: link.createdAt,
+          patient: {
+            id: patient.id,
+            fullName: patient.fullName,
+            email: patient.email,
+            phoneNumber: patient.phoneNumber,
+            dateOfBirth: patient.dateOfBirth,
+            gender: patient.gender,
+            role: patient.role,
+          },
+        });
       }
-    );
+    }
+    return successResponse(res, 200, "Patients fetched.", { patients });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getPatientDetail = async (req, res, next) => {
+  try {
+    const caregiverId = req.user.id;
+    const me = await User.findByPk(caregiverId);
+    if (!me || me.role !== "caregiver") {
+      return errorResponse(res, 403, "Only caregivers can view patient details.");
+    }
+    const patientId = parseInt(req.params.patientId, 10);
+    const link = await Caregiver.findOne({
+      where: { userId: patientId, email: me.email },
+    });
+    if (!link) {
+      return errorResponse(res, 403, "This patient is not linked to you.");
+    }
+    const Medicine = require("../models/medicine.model");
+    const DoseLog = require("../models/dose_log.model");
+    const patient = await User.findByPk(patientId, {
+      attributes: { exclude: ["password"] },
+    });
+    const medicines = await Medicine.findAll({
+      where: { userId: patientId },
+      order: [["createdAt", "DESC"]],
+    });
+    const doses = await DoseLog.findAll({
+      where: { userId: patientId },
+      order: [["scheduledTime", "DESC"]],
+      limit: 100,
+    });
+    const taken = doses.filter((d) => d.status === "taken").length;
+    const missed = doses.filter((d) => d.status === "missed").length;
+    const skipped = doses.filter((d) => d.status === "skipped").length;
+    const upcoming = doses.filter((d) => d.status === "upcoming").length;
+    return successResponse(res, 200, "Patient detail fetched.", {
+      patient,
+      medicines,
+      doses,
+      stats: { taken, missed, skipped, upcoming },
+    });
   } catch (error) {
     next(error);
   }
@@ -205,5 +275,7 @@ module.exports = {
   getProfile,
   updateProfile,
   getCaregivers,
-  inviteCaregiver
+  inviteCaregiver,
+  getMyPatients,
+  getPatientDetail
 };

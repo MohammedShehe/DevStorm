@@ -10,6 +10,7 @@ const reportRoutes = require("./routes/report.routes");
 const preferenceRoutes = require("./routes/preference.routes");
 const caregiverNoteRoutes = require("./routes/caregiverNote.routes");
 const familyMemberRoutes = require("./routes/familyMember.routes");
+const chatRoutes = require("./routes/chat.routes");
 const aiRoutes = require("./routes/ai.routes");
 
 const errorMiddleware = require("./middlewares/error.middleware");
@@ -39,6 +40,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/preferences", preferenceRoutes);
 app.use("/api/caregivers", caregiverNoteRoutes);
 app.use("/api/family-members", familyMemberRoutes);
+app.use("/api/chat", chatRoutes);
 app.use("/api/ai", aiRoutes);
 
 // 404 handler

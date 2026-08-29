@@ -11,7 +11,7 @@ import '../../utils/validators.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/primary_button.dart';
 import '../main_navigation.dart';
-import 'signup_screen.dart';
+import '../onboarding/onboarding_screen.dart';
 import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -238,59 +238,38 @@ class _LoginScreenState extends State<LoginScreen> {
                   isLoading: auth.isLoading,
                 ),
                 const SizedBox(height: 24),
-                Row(
-                  children: [
-                    const Expanded(child: Divider()),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        'or continue with',
-                        style: TextStyle(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? AppColors.textSecondaryDark
-                              : AppColors.textSecondaryLight,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    const Expanded(child: Divider()),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(child: _socialButton(icon: Icons.g_mobiledata_rounded, label: 'Google')),
-                    const SizedBox(width: 14),
-                    Expanded(child: _socialButton(icon: Icons.apple_rounded, label: 'Apple')),
-                  ],
-                ),
-                const SizedBox(height: 30),
-                Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Don't have an account? ",
-                        style: TextStyle(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? AppColors.textSecondaryDark
-                              : AppColors.textSecondaryLight,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: auth.isLoading ? null : () => pushSlideRight(context, const SignUpScreen()),
-                        child: Text(
-                          'Sign Up',
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
+const SizedBox(height: 24),
+
+Row(
+  mainAxisAlignment: MainAxisAlignment.center,
+  children: [
+    Text(
+      "Don't have an account? ",
+      style: TextStyle(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.textSecondaryDark
+            : AppColors.textSecondaryLight,
+      ),
+    ),
+    GestureDetector(
+      onTap: auth.isLoading
+          ? null
+          : () => pushSlideRight(
+                context,
+                const OnboardingScreen(),
+              ),
+      child: const Text(
+        'Sign Up',
+        style: TextStyle(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 12),
               ],
             ),
           ),
@@ -299,31 +278,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _socialButton({required IconData icon, required String label}) {
-    return OutlinedButton.icon(
-      onPressed: () {
-        // Social login - placeholder
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Social login coming soon!'),
-            duration: Duration(seconds: 1),
-          ),
-        );
-      },
-      icon: Icon(icon, size: 22),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(52),
-        side: BorderSide(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? AppColors.borderDark
-              : AppColors.borderLight,
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        foregroundColor: Theme.of(context).brightness == Brightness.dark
-            ? AppColors.textPrimaryDark
-            : AppColors.textPrimaryLight,
-      ),
-    );
-  }
 }

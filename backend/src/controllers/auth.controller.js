@@ -36,7 +36,8 @@ const registerUser = async (req, res, next) => {
       dateOfBirth,
       gender,
       password,
-      confirmPassword
+      confirmPassword,
+      role
     } = req.body;
 
     // 1. Validate request
@@ -86,13 +87,15 @@ const registerUser = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // 6. Create user
+    const userRole = (role === "caregiver") ? "caregiver" : "patient";
     const user = await User.create({
       fullName: fullName.trim(),
       email: normalizedEmail,
       phoneNumber: normalizedPhone,
       dateOfBirth,
       gender,
-      password: hashedPassword
+      password: hashedPassword,
+      role: userRole
     });
 
     // 7. Send welcome email
@@ -115,6 +118,7 @@ const registerUser = async (req, res, next) => {
           phoneNumber: user.phoneNumber,
           dateOfBirth: user.dateOfBirth,
           gender: user.gender,
+          role: user.role,
           createdAt: user.createdAt
         }
       }
@@ -191,7 +195,8 @@ const loginUser = async (req, res, next) => {
           email: user.email,
           phoneNumber: user.phoneNumber,
           dateOfBirth: user.dateOfBirth,
-          gender: user.gender
+          gender: user.gender,
+          role: user.role
         }
       }
     );

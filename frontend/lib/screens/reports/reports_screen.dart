@@ -48,14 +48,13 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                 decoration: BoxDecoration(color: AppColors.borderLight, borderRadius: BorderRadius.circular(10)),
                 alignment: Alignment.center,
               ),
-              const Text('Export Adherence Report', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              const Text('Export Patient Medicine History', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              const Text('Share a summary with your doctor or caregiver.',
+              const Text('Includes medicine start dates, patient age, adherence and dose history.',
                   style: TextStyle(color: AppColors.textSecondaryLight, fontSize: 13)),
               const SizedBox(height: 20),
-              _exportTile(context, icon: Icons.picture_as_pdf_outlined, label: 'Export as PDF', color: AppColors.danger),
+              _exportTile(context, icon: Icons.picture_as_pdf_outlined, label: 'Export medicine history (PDF)', color: AppColors.danger),
               const SizedBox(height: 12),
-              _exportTile(context, icon: Icons.table_chart_outlined, label: 'Export as CSV', color: AppColors.success),
               const SizedBox(height: 8),
             ],
           ),
@@ -71,15 +70,44 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         Navigator.pop(context);
         final api = ApiService();
         try {
-          final isPdf = label.toLowerCase().contains('pdf');
-          final result = isPdf ? await api.exportPdf() : await api.exportCsv();
-          final msg = result['message']?.toString() ?? '$label requested';
-          final url = result['data']?['url']?.toString();
-          if (context.mounted) {
+          final result = await api.exportPdf();
+          if (!context.mounted) return;
+          if (result['success'] != true) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(url != null ? '$msg\n$url' : msg)),
+              SnackBar(content: Text(result['message']?.toString() ?? 'Export failed')),
             );
+            return;
           }
+          final data = result['data'] as Map<String, dynamic>? ?? {};
+          final summary = Map<String, dynamic>.from(data['summary'] as Map? ?? {});
+          final history = (data['medicineHistory'] as List? ?? []);
+          final buf = StringBuffer();
+          buf.writeln('PATIENT MEDICINE HISTORY');
+          buf.writeln('========================');
+          buf.writeln('Patient: ${summary['patientName'] ?? ''}');
+          buf.writeln('Email: ${summary['email'] ?? ''}');
+          buf.writeln('DOB: ${summary['dateOfBirth'] ?? ''}');
+          buf.writeln('Age: ${summary['age'] ?? ''}');
+          buf.writeln('Gender: ${summary['gender'] ?? ''}');
+          buf.writeln('Generated: ${summary['generatedAt'] ?? ''}');
+          buf.writeln('');
+          buf.writeln('Totals — taken: ${summary['taken']}, missed: ${summary['missed']}, skipped: ${summary['skipped']}');
+          buf.writeln('');
+          buf.writeln('MEDICINES');
+          for (final m in history) {
+            final med = Map<String, dynamic>.from(m as Map);
+            buf.writeln('- ${med['name']} | ${med['dosage']} | start: ${med['startDate']} | adherence: ${med['adherence']}% | taken: ${med['taken']} missed: ${med['missed']}');
+          }
+          await showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Medicine History PDF'),
+              content: SingleChildScrollView(child: SelectableText(buf.toString())),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+              ],
+            ),
+          );
         } catch (e) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -117,20 +145,26 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              padding: const EdgeInsets.fromLTRB(12, 12, 20, 0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Reports & History', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                  const Expanded(
+                    child: Text('Reports & History', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                  ),
                   IconButton(
                     onPressed: () => _showExportSheet(context),
+                    tooltip: 'Export patient medicine history',
                     icon: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         gradient: AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.ios_share_rounded, color: Colors.white, size: 18),
+                      child: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white, size: 18),
                     ),
                   ),
                 ],

@@ -18,14 +18,32 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   Future<void> _save() async {
     setState(() => _saving = true);
     final reminders = context.read<ReminderProvider>();
-    final ok = await reminders.updateNotificationSettings(reminders.prefs);
-    // Re-init permissions & reschedule
-    await NotificationService.instance.init();
-    await NotificationService.instance.syncDoseReminders(reminders.allLogs);
+    // Snapshot current UI values from prefs (mutated by switches)
+    final snapshot = reminders.prefs.copyWith(
+      soundEnabled: reminders.prefs.soundEnabled,
+      vibrationEnabled: reminders.prefs.vibrationEnabled,
+      snoozeMinutes: reminders.prefs.snoozeMinutes,
+      missedDoseAlerts: reminders.prefs.missedDoseAlerts,
+      soundName: reminders.prefs.soundName,
+    );
+    bool ok = false;
+    try {
+      ok = await reminders.updateNotificationSettings(snapshot);
+    } catch (e) {
+      ok = false;
+      reminders.clearError();
+    }
+    try {
+      await NotificationService.instance.init();
+      await NotificationService.instance.syncDoseReminders(reminders.allLogs);
+    } catch (_) {}
     if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(ok ? 'Notification preferences saved' : (reminders.error ?? 'Saved locally'))),
+      SnackBar(
+        content: Text(ok ? 'Notification preferences saved' : (reminders.error ?? 'Preferences updated')),
+        backgroundColor: ok ? null : Colors.orange.shade800,
+      ),
     );
   }
 

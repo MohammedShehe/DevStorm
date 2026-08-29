@@ -128,25 +128,64 @@ exports.getSummary = async (req, res, next) => {
   }
 };
 
-// Export PDF — returns summary JSON suitable for client-side PDF generation
+// Export PDF — patient medicine history with start dates, age, adherence
 exports.exportPdf = async (req, res, next) => {
   try {
     const userId = req.user.id;
+    const User = require("../models/user.model");
+    const user = await User.findByPk(userId, { attributes: { exclude: ["password"] } });
+    const medicines = await Medicine.findAll({
+      where: { userId },
+      order: [["createdAt", "ASC"]],
+    });
     const doses = await DoseLog.findAll({
       where: { userId },
       order: [["scheduledTime", "DESC"]],
-      limit: 200,
+      limit: 500,
+    });
+    let age = null;
+    if (user && user.dateOfBirth) {
+      const dob = new Date(user.dateOfBirth);
+      const now = new Date();
+      age = now.getFullYear() - dob.getFullYear();
+      const m = now.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+    }
+    const medicineHistory = medicines.map((med) => {
+      const medDoses = doses.filter((d) => String(d.medicineId) === String(med.id) || d.medicineName === med.name);
+      const taken = medDoses.filter((d) => d.status === "taken").length;
+      const missed = medDoses.filter((d) => d.status === "missed").length;
+      const total = medDoses.length || 0;
+      return {
+        id: med.id,
+        name: med.name,
+        dosage: med.dosage,
+        frequency: med.frequency,
+        startDate: med.startDate || med.createdAt,
+        endDate: med.endDate || null,
+        instructions: med.instructions || med.notes || null,
+        taken,
+        missed,
+        adherence: total > 0 ? Math.round((taken / total) * 100) : null,
+      };
     });
     const summary = {
-      total: doses.length,
+      patientName: user?.fullName || "",
+      email: user?.email || "",
+      dateOfBirth: user?.dateOfBirth || null,
+      age,
+      gender: user?.gender || null,
+      totalMedicines: medicines.length,
+      totalDoses: doses.length,
       taken: doses.filter((d) => d.status === "taken").length,
       missed: doses.filter((d) => d.status === "missed").length,
       skipped: doses.filter((d) => d.status === "skipped").length,
       generatedAt: new Date().toISOString(),
     };
-    return successResponse(res, 200, "PDF report data ready. Generate PDF on client or connect a PDF library on the server.", {
+    return successResponse(res, 200, "Patient medicine history ready for PDF.", {
       format: "pdf-data",
       summary,
+      medicineHistory,
       rows: doses,
     });
   } catch (error) {
@@ -154,7 +193,8 @@ exports.exportPdf = async (req, res, next) => {
   }
 };
 
-// Export CSV — returns CSV string in response body
+
+// Export CSV
 exports.exportCsv = async (req, res, next) => {
   try {
     const userId = req.user.id;

@@ -8,6 +8,10 @@ import 'medicines/add_medicine_screen.dart';
 import 'reminders/reminders_screen.dart';
 import 'reports/reports_screen.dart';
 import 'profile/profile_screen.dart';
+import 'caregiver/caregiver_dashboard_screen.dart';
+import 'chat/chat_list_screen.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -58,6 +62,19 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
     super.dispose();
   }
 
+  Widget _buildScreenForIndex(int index) {
+    final user = context.watch<AuthProvider>().currentUser;
+    final isCaregiver = user?.isCaregiver == true;
+    if (isCaregiver && index == 0) {
+      return const CaregiverDashboardScreen();
+    }
+    // Caregivers: hide medicines/reminders usefulness - still show profile
+    if (isCaregiver && (index == 1 || index == 2)) {
+      return const CaregiverDashboardScreen();
+    }
+    return _screens[index];
+  }
+
   void _toggleFabMenu() {
     setState(() {
       _isFabMenuOpen = !_isFabMenuOpen;
@@ -75,6 +92,23 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 380),
         pageBuilder: (context, animation, secondaryAnimation) => const AddMedicineScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+
+  void _openChat() {
+    _toggleFabMenu();
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 380),
+        pageBuilder: (context, animation, secondaryAnimation) => const ChatListScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
@@ -115,7 +149,7 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
             transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
             child: KeyedSubtree(
               key: ValueKey<int>(_currentIndex),
-              child: _screens[_currentIndex],
+              child: _buildScreenForIndex(_currentIndex),
             ),
           ),
           // Floating AI chatbot (visible, does not conflict with center FAB)
@@ -142,6 +176,54 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Chat FAB Menu Item
+          if (_isFabMenuOpen)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GestureDetector(
+                onTap: _openChat,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardTheme.color,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Messages',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           // Reports FAB Menu Item
           if (_isFabMenuOpen)
             Padding(
