@@ -8,11 +8,10 @@ class ApiService {
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
 
-  /// Change this to your machine LAN IP when testing on a physical device
-  /// e.g. 'http://localhost:5000/api'
+
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.33.5.108:5000/api', // Android emulator → host localhost
+    defaultValue: 'https://devstorm-bena.onrender.com/api', // Android emulator → host localhost
   );
 
   static const String _authBase = '$baseUrl/auth';
